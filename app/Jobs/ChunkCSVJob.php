@@ -9,6 +9,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Log;
 
 class ChunkCSVJob implements ShouldQueue
 {
@@ -27,18 +28,15 @@ class ChunkCSVJob implements ShouldQueue
      */
     public function handle()
     {
-        $data = DataLarge::select('id','data1','data2','data3','created_at','updated_at')
-                         ->get()
-                         ->toArray();
-        $dataCount = count($data);
-
-        $sizeChunk = 2000;        
-        if($dataCount > 20000)
-            $sizeChunk = ceil($dataCount / 5); // mempertahankan agar yang masuk ke chain itu 5 job + 1 job
-        // info("sizeChunk = $sizeChunk");
-        $data = array_chunk($data, $sizeChunk);
+        // Log::info('ChunkCSVJob Memory usage before job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
 
         $dataCount = DataLarge::count();
+        $sizeChunk = 2000;
+        if($dataCount > 50000)
+            $sizeChunk = ceil($dataCount / 20); // mempertahankan agar yang masuk ke chain itu 20 job insertcsv + 1 job endinsertcsv
+        else if($dataCount > 20000)
+            $sizeChunk = ceil($dataCount / 15); // mempertahankan agar yang masuk ke chain itu 15 job insertcsv + 1 job endinsertcsv
+
         $randomString = $this->generateRandomString(10);
         $filepath = "datalarge-{$dataCount}row-{$randomString}.csv";
         $path = "app/public/$filepath";
@@ -54,14 +52,17 @@ class ChunkCSVJob implements ShouldQueue
 
         /* JOB INSERT JOB */
         $jobs = [];
-        foreach($data as $item)
-        {
-            $jobs[] = new InsertCSVJob($item, $filename);
-        }
-        $jobs[] = new EndInsertCSVJob($filepath);
-
+        DataLarge::select('data1','data2','data3','created_at','updated_at')
+                 ->chunk($sizeChunk, function ($rows) use (&$jobs, $filename) {
+                    $data = $rows->toArray();
+                    $jobs[] = (new InsertCSVJob($data, $filename))->onQueue('export_large_csv');
+                 });
+        $jobs[] = (new EndInsertCSVJob($filepath))->onQueue('export_large_csv');
+        
         Bus::chain($jobs)->dispatch();
         /* JOB INSERT JOB */
+
+        // Log::info('ChunkCSVJob Memory usage after job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
     }
 
     private function generateRandomString($length) 

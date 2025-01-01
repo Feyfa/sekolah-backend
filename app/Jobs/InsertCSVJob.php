@@ -7,6 +7,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class InsertCSVJob implements ShouldQueue
 {
@@ -29,23 +30,30 @@ class InsertCSVJob implements ShouldQueue
      */
     public function handle()
     {
+        // Log::info('InsertCSVJob Memory usage before job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
+
         $file = fopen($this->filename, 'a');
 
         if ($file === false) 
             return;
 
+        $lines = [];
         foreach ($this->data as $row) 
         {
-            $line = [
+            $data = [
                 $row['data1'],
                 $row['data2'],
                 $row['data3'],
                 $row['created_at'],
                 $row['updated_at'],
             ];
-            fwrite($file, implode(',', $line) . PHP_EOL);
+            $lines[] = implode(',', $data);
         }
 
+        fwrite($file, implode(PHP_EOL, $lines) . PHP_EOL);
+
         fclose($file);
+
+        // Log::info('InsertCSVJob Memory usage after job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
     }
 }

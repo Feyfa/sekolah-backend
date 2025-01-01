@@ -8,6 +8,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class EndInsertCSVJob implements ShouldQueue
 {
@@ -28,6 +29,8 @@ class EndInsertCSVJob implements ShouldQueue
      */
     public function handle()
     {
+        // Log::info('EndInsertCSVJob Memory usage before job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
+
         $app_url = env('APP_URL', '');
         $link = "{$app_url}/storage/{$this->filepath}";
 
@@ -40,5 +43,7 @@ class EndInsertCSVJob implements ShouldQueue
             'name' => 'export_large_csv',
             'data' => json_encode($data)
         ]);
+
+        // Log::info('EndInsertCSVJob Memory usage after job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
     }
 }
