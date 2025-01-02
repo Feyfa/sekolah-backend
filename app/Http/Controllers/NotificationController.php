@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Notification;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class NotificationController extends Controller
 {
@@ -23,6 +24,10 @@ class NotificationController extends Controller
             $notification->delete();
         }
 
-        return response()->json(['result' => 'success', 'dataFormat' => $dataFormat]);
+        $isExportingLargeCSV = DB::table('jobs')
+                                 ->where('queue', 'export_large_csv')
+                                 ->exists();
+
+        return response()->json(['result' => 'success', 'dataFormat' => $dataFormat, 'isExportingLargeCSV' => $isExportingLargeCSV]);
     }
 }
