@@ -14,14 +14,14 @@ class EndInsertCSVJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
     
-    private string $filepath;
+    private string $notification_id;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(string $filepath)
+    public function __construct($notification_id)
     {
-        $this->filepath = $filepath;
+        $this->notification_id = $notification_id;
     }
 
     /**
@@ -31,18 +31,12 @@ class EndInsertCSVJob implements ShouldQueue
     {
         // Log::info('EndInsertCSVJob Memory usage before job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
 
-        $app_url = env('APP_URL', '');
-        $link = "{$app_url}/storage/{$this->filepath}";
-
-        $data = [
-            'message' => "export successfully link",
-            'link' => $link
-        ];
-
-        Notification::create([
-            'name' => 'export_large_csv',
-            'data' => json_encode($data)
-        ]);
+        /* UPDATE STATUS ACTIVE NOTIFICATION */
+        Notification::where('id', $this->notification_id)
+                    ->update([
+                        'active' => 'T'
+                    ]);
+        /* UPDATE STATUS ACTIVE NOTIFICATION */
 
         // Log::info('EndInsertCSVJob Memory usage after job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
     }

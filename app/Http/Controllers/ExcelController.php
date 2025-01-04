@@ -10,6 +10,8 @@ use App\Jobs\InsertCSVJob;
 use App\Models\DataLarge;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -43,5 +45,23 @@ class ExcelController extends Controller
 
         ChunkCSVJob::dispatch()->onQueue('export_large_csv');
         return response()->json(['result' => 'success', 'message' => "export is running in background processing, when it is finished you will get a notification"]);
+    }
+
+    public function downloadLargeCSV($filename)
+    {
+        $filePath = "csv/$filename";
+
+        // Cek jika file ada di penyimpanan dan memiliki ekstensi csv
+        if (Storage::disk('public')->exists($filePath) && pathinfo($filename, PATHINFO_EXTENSION) == 'csv') {
+            // Mengunduh file
+            $fileContent = Storage::disk('public')->get($filePath);
+            // Menghapus file setelah diunduh
+            Storage::disk('public')->delete($filePath);
+            
+            return response($fileContent, 200)->header('Content-Type', 'text/csv')
+                                              ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        } else {
+            return response(['error' => 'File tidak ditemukan atau format salah.']);
+        }
     }
 }

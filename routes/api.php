@@ -3,7 +3,6 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\EmailController;
 use App\Http\Controllers\ExcelController;
-use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\UserController;
 use Illuminate\Http\Request;
@@ -43,8 +42,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/students/export/excel', [ExcelController::class, 'export']);
     Route::post('/students/import/excel', [ExcelController::class, 'import']);
     Route::get('/large/export/csv', [ExcelController::class, 'largeExport']);
-
-    Route::get('/notification/export-large-csv', [NotificationController::class, 'notifExportLargeCSV']);
     
     Route::post('/sendemail', [EmailController::class, 'sendEmail']);
 });

@@ -2,17 +2,59 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Notification;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Yaza\LaravelGoogleDriveStorage\Gdrive;
 
 class AuthController extends Controller
 {
     public function tokenValidation()
     {
-        return response()->json(['status' => 200, 'message' => 'token valid'], 200);
+        /* GET NOTIFICATION WHERE USER ID AND ACTIVE = 'T' */
+        $user_id = auth()->user()->id;
+        $notifications = Notification::where('user_id', $user_id)
+                                    ->where('active', 'T')
+                                    ->get();
+
+        $notificationFormat = [];
+        
+        
+        foreach ($notifications as $notification) 
+        {
+            $data = [];
+            if(!empty($notification->data) && trim($notification->data) != '')
+                $data = json_decode($notification->data, true); 
+        
+            if ($notification->name == 'download' && is_array($data) && count($data) > 0) 
+                $data['link'] = preg_replace('#(https://[^/]+)//#', '$1/', $data['link']);
+        
+            $notificationFormat[] = [
+                'id' => $notification->id, 
+                'status' => $notification->status,
+                'message' => $notification->message,
+                'name' => $notification->name,
+                'data' => $data
+            ];
+
+            $notification->delete();
+        }
+        /* GET NOTIFICATION WHERE USER ID AND ACTIVE = 'T' */
+
+        /* CHECK IS EXPORTING */
+        $isExporting = [
+            'largeCSV' => false
+        ];
+
+        $isExporting['largeCSV'] = Notification::where('user_id', $user_id)
+                                               ->where('name', 'download')
+                                               ->exists(); 
+        /* CHECK IS EXPORTING */
+
+        return response()->json(['status' => 200, 'message' => 'token valid', 'notifications' => $notificationFormat, 'isExporting' => $isExporting], 200);
     }
     
     public function register(Request $request)
