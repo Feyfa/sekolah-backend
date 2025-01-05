@@ -61,7 +61,7 @@ class ExcelController extends Controller
             return response($fileContent, 200)->header('Content-Type', 'text/csv')
                                               ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
         } else {
-            return response(['error' => 'File tidak ditemukan atau format salah.']);
+            return response()->json([], 400);
         }
     }
 }

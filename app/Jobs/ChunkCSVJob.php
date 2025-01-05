@@ -69,7 +69,7 @@ class ChunkCSVJob implements ShouldQueue
 
         /* INSERT NOTIFICATION */
         $app_url = env('APP_URL', '');
-        $link = "{$app_url}/download/csv/{$filepath}";
+        $link = "{$app_url}/api/download/csv/{$filepath}";
         $data = [
             'link' => $link
         ];
@@ -78,7 +78,7 @@ class ChunkCSVJob implements ShouldQueue
             'user_id' => 1,
             'status' => 'success',
             'name' => 'download',
-            'message' => 'export successfully link',
+            'message' => 'export csv successfully',
             'data' => json_encode($data),
             'active' => 'F'
         ]);
