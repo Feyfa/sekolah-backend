@@ -18,3 +18,4 @@ Route::get('/', function () {
     return view('welcome');
 });
 Route::get('download/csv/{filename}', [ExcelController::class, 'downloadLargeCSV']);
+Route::get('/jidan/test'. fn () => 'jidan nih bos');
