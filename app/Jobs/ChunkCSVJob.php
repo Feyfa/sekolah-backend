@@ -70,7 +70,7 @@ class ChunkCSVJob implements ShouldQueue
         if ($file === false)
             return;
 
-        $headers = ['function','type','blocked_type','campaign_id','url','module_type','updated_at','created_at'];
+        $headers = ['function','type','blocked_type','campaign_id','md5_email','url','module_type','updated_at','created_at'];
         fwrite($file, implode(',', $headers) . PHP_EOL);
         fclose($file);
 
@@ -93,7 +93,7 @@ class ChunkCSVJob implements ShouldQueue
         /* INSERT NOTIFICATION */
 
         /* JOB */
-        FailedLeadRecord::select('function','type','blocked_type','campaign_id','url','module_type','updated_at','created_at')
+        FailedLeadRecord::select('function','type','blocked_type','campaign_id','md5_email','url','module_type','updated_at','created_at')
                         ->chunk($sizeChunk, function ($rows) use ($filename, $dataCount, $notificationid) {
                             $data = $rows->toArray();
                             InsertCSVJob::dispatch($data, $filename, $dataCount, $notificationid)->onQueue('insert_export_csv');

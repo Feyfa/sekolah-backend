@@ -54,6 +54,7 @@ class InsertCSVJob implements ShouldQueue
                 $row['type'],
                 $row['blocked_type'],
                 $row['campaign_id'],
+                $row['md5_email'],
                 $row['url'],
                 $row['module_type'],
                 $updated_at,
