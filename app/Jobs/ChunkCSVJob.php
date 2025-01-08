@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\DataLarge;
+use App\Models\FailedLeadRecord;
 use App\Models\Notification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -32,12 +33,18 @@ class ChunkCSVJob implements ShouldQueue
     {
         // Log::info('ChunkCSVJob Memory usage before job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
 
-        $dataCount = DataLarge::count();
+        $dataCount = FailedLeadRecord::count();
         $sizeChunk = 2000;
+        if($dataCount > 200000)
+            $sizeChunk = ceil($dataCount / 60);
+        else if($dataCount > 150000)
+            $sizeChunk = ceil($dataCount / 50);
+        else if($dataCount > 100000)
+            $sizeChunk = ceil($dataCount / 40);
         if($dataCount > 50000)
-            $sizeChunk = ceil($dataCount / 20); // mempertahankan agar yang masuk ke chain itu 20 job insertcsv + 1 job endinsertcsv
+            $sizeChunk = ceil($dataCount / 30);
         else if($dataCount > 20000)
-            $sizeChunk = ceil($dataCount / 15); // mempertahankan agar yang masuk ke chain itu 15 job insertcsv + 1 job endinsertcsv
+            $sizeChunk = ceil($dataCount / 20);
 
         /* CREATE FOLDER CSV IF FOLDER NOT EXISTS */
         $folderPath = storage_path("app/public/csv");
@@ -46,14 +53,14 @@ class ChunkCSVJob implements ShouldQueue
         /* CREATE FOLDER CSV IF FOLDER NOT EXISTS */
 
         $randomString = $this->generateRandomString(10);
-        $filepath = "datalarge-{$dataCount}row-{$randomString}.csv";
+        $filepath = "failedleadrecords-{$dataCount}row-{$randomString}.csv";
         $path = "csv/$filepath";
         /* IF EXISTS GENERATE RANDOM STRING AGAIN */
         while (Storage::disk('public')->exists($path)) 
         {
             Log::info('masuk while');
             $randomString = $this->generateRandomString(10);
-            $filepath = "datalarge-{$dataCount}row-{$randomString}.csv";
+            $filepath = "failedleadrecords-{$dataCount}row-{$randomString}.csv";
             $path = "csv/$filepath";
         }
         /* IF EXISTS GENERATE RANDOM STRING AGAIN */
@@ -63,7 +70,7 @@ class ChunkCSVJob implements ShouldQueue
         if ($file === false)
             return;
 
-        $headers = ['data1','data2','data3','created_at','updated_at'];
+        $headers = ['function','type','blocked_type','campaign_id','url','module_type','updated_at','created_at'];
         fwrite($file, implode(',', $headers) . PHP_EOL);
         fclose($file);
 
@@ -78,24 +85,20 @@ class ChunkCSVJob implements ShouldQueue
             'user_id' => 1,
             'status' => 'success',
             'name' => 'download',
-            'message' => 'export csv successfully',
-            'data' => json_encode($data),
+            'message' => 'export csv failed lead record successfully',
+            'data' => json_encode($data, JSON_UNESCAPED_SLASHES),
             'active' => 'F'
         ]);
-        $notification_id = $notification->id;
+        $notificationid = $notification->id;
         /* INSERT NOTIFICATION */
 
-        /* JOB INSERT JOB */
-        $jobs = [];
-        DataLarge::select('data1','data2','data3','created_at','updated_at')
-                 ->chunk($sizeChunk, function ($rows) use (&$jobs, $filename) {
-                    $data = $rows->toArray();
-                    $jobs[] = (new InsertCSVJob($data, $filename))->onQueue('export_large_csv');
-                 });
-        $jobs[] = (new EndInsertCSVJob($notification_id))->onQueue('export_large_csv');
-        
-        Bus::chain($jobs)->dispatch();
-        /* JOB INSERT JOB */
+        /* JOB */
+        FailedLeadRecord::select('function','type','blocked_type','campaign_id','url','module_type','updated_at','created_at')
+                        ->chunk($sizeChunk, function ($rows) use ($filename, $dataCount, $notificationid) {
+                            $data = $rows->toArray();
+                            InsertCSVJob::dispatch($data, $filename, $dataCount, $notificationid)->onQueue('insert_export_csv');
+                        });
+        /* JOB */
 
         // Log::info('ChunkCSVJob Memory usage after job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
     }

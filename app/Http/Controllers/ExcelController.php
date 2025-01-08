@@ -38,12 +38,7 @@ class ExcelController extends Controller
     
     public function largeExport(Request $request)
     {
-        $dataCount = DataLarge::count();
-        
-        if($dataCount > 100000)
-            return response()->json(['result' => 'error', 'message' => 'maximum export mysql to csv 100K row'], 400);
-
-        ChunkCSVJob::dispatch()->onQueue('export_large_csv');
+        ChunkCSVJob::dispatch()->onQueue('chunk_export_csv');
         return response()->json(['result' => 'success', 'message' => "export is running in background processing, when it is finished you will get a notification"]);
     }
 
