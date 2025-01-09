@@ -8,6 +8,7 @@ use App\Jobs\ChunkCSVJob;
 use App\Jobs\EndInsertCSVJob;
 use App\Jobs\InsertCSVJob;
 use App\Models\DataLarge;
+use App\Models\Notification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
@@ -38,12 +39,23 @@ class ExcelController extends Controller
     
     public function largeExport(Request $request)
     {
-        ChunkCSVJob::dispatch()->onQueue('chunk_export_csv');
+        $notification = Notification::create([
+            'user_id' => 1,
+            'status' => 'success',
+            'name' => 'download',
+            'message' => 'export csv failed lead record successfully',
+            'data' => '',
+            'active' => 'F'
+        ]);
+        $notificationid = $notification->id;
+        ChunkCSVJob::dispatch($notificationid)->onQueue('chunk_export_csv');
         return response()->json(['result' => 'success', 'message' => "export is running in background processing, when it is finished you will get a notification"]);
     }
 
     public function downloadLargeCSV($filename)
     {
+        ini_set('memory_limit', '512M');
+
         $filePath = "csv/$filename";
 
         // Cek jika file ada di penyimpanan dan memiliki ekstensi csv

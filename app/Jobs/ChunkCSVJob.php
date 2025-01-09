@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\DataLarge;
 use App\Models\FailedLeadRecord;
 use App\Models\Notification;
+use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -18,12 +19,17 @@ class ChunkCSVJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $tries = 1;
+    public $timeout = 600;
+
+    private $notificationid;
+
     /**
      * Create a new job instance.
      */
-    public function __construct()
+    public function __construct($notificationid)
     {
-        
+        $this->notificationid = $notificationid;
     }
 
     /**
@@ -31,11 +37,17 @@ class ChunkCSVJob implements ShouldQueue
      */
     public function handle()
     {
-        // Log::info('ChunkCSVJob Memory usage before job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
+        ini_set('memory_limit', '512M');
+
+        Log::info('ChunkCSVJob Memory usage before job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
 
         $dataCount = FailedLeadRecord::count();
         $sizeChunk = 2000;
-        if($dataCount > 200000)
+        if($dataCount > 300000)
+            $sizeChunk = ceil($dataCount / 80);
+        else if($dataCount > 250000)
+            $sizeChunk = ceil($dataCount / 70);
+        else if($dataCount > 200000)
             $sizeChunk = ceil($dataCount / 60);
         else if($dataCount > 150000)
             $sizeChunk = ceil($dataCount / 50);
@@ -68,10 +80,14 @@ class ChunkCSVJob implements ShouldQueue
         $file = fopen($filename, 'w');
 
         if ($file === false)
+        {
+            fclose($file);
             return;
+        }
 
-        $headers = ['function','type','blocked_type','campaign_id','md5_email','url','module_type','updated_at','created_at'];
-        fwrite($file, implode(',', $headers) . PHP_EOL);
+        $headers = ['function','type','blocked_type','description','campaign_id','md5_email','url','module_type','data_lead','updated_at','created_at'];
+        $headersFormat = $this->formatCsvLine($headers);
+        fwrite($file, $headersFormat . PHP_EOL);
         fclose($file);
 
         /* INSERT NOTIFICATION */
@@ -81,27 +97,44 @@ class ChunkCSVJob implements ShouldQueue
             'link' => $link
         ];
 
-        $notification = Notification::create([
-            'user_id' => 1,
-            'status' => 'success',
-            'name' => 'download',
-            'message' => 'export csv failed lead record successfully',
-            'data' => json_encode($data, JSON_UNESCAPED_SLASHES),
-            'active' => 'F'
-        ]);
-        $notificationid = $notification->id;
+        $notificationid = $this->notificationid;
+        Notification::where('id', $notificationid)
+                    ->update([
+                        'data' => json_encode($data, JSON_UNESCAPED_SLASHES),
+                    ]);
         /* INSERT NOTIFICATION */
 
         /* JOB */
-        FailedLeadRecord::select('function','type','blocked_type','campaign_id','md5_email','url','module_type','updated_at','created_at')
+        FailedLeadRecord::select('function','type','blocked_type','description','leadspeek_api_id','email_encrypt','url','leadspeek_type','data_lead','updated_at','created_at')
                         ->chunk($sizeChunk, function ($rows) use ($filename, $dataCount, $notificationid) {
                             $data = $rows->toArray();
                             InsertCSVJob::dispatch($data, $filename, $dataCount, $notificationid)->onQueue('insert_export_csv');
                         });
         /* JOB */
 
-        // Log::info('ChunkCSVJob Memory usage after job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
+        Log::info('ChunkCSVJob Memory usage after job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
     }
+
+    public function failed(Exception $e)
+    {
+        Log::info([
+            'action' => 'failed ChunkCSVJob',
+            'error' => $e->getMessage()
+        ]);
+        Notification::where('id', $this->notificationid)
+                    ->update([
+                        'active' => 'T'
+                    ]);
+    }
+
+    private function formatCsvLine(array $data): string
+    {
+        // Bungkus setiap elemen dalam tanda kutip ganda dan gabungkan dengan koma
+        return implode(',', array_map(function ($item) {
+            return '"' . str_replace('"', '""', $item) . '"'; // Escape tanda kutip ganda
+        }, $data));
+    }
+
 
     private function generateRandomString($length) 
     {

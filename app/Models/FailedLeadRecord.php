@@ -15,9 +15,10 @@ class FailedLeadRecord extends Model
         'function',
         'type',
         'blocked_type',
-        'campaign_id',
-        'md5_email',
+        'leadspeek_api_id',
+        'email_encrypt',
         'url',
-        'module_type'
+        'leadspeek_type',
+        'data_lead'
     ];
 }
