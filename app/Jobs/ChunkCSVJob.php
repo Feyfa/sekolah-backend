@@ -92,8 +92,7 @@ class ChunkCSVJob implements ShouldQueue
 
         /* INSERT NOTIFICATION */
         $app_url = env('APP_URL', '');
-        $link = "{$app_url}/download/csv/{$filepath}"; // web.php
-        // $link = "{$app_url}/api/download/csv/{$filepath}"; // api.php
+        $link = "{$app_url}/download/csv/{$filepath}";
         $data = [
             'link' => $link
         ];

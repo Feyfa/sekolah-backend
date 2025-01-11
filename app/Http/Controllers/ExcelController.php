@@ -56,9 +56,10 @@ class ExcelController extends Controller
     {
         ini_set('memory_limit', '512M');
 
+        Log::info('downloadLargeCSV Memory usage before job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
+
         $filePath = "csv/$filename";
 
-        /* CARA BARU */
         // Cek jika file ada di penyimpanan dan memiliki ekstensi csv
         if (Storage::disk('public')->exists($filePath) && pathinfo($filename, PATHINFO_EXTENSION) == 'csv') 
         {
@@ -71,31 +72,16 @@ class ExcelController extends Controller
                     flush();
                 }
                 fclose($stream);
-
+        
                 // Hapus file setelah streaming selesai
                 Storage::disk('public')->delete($filePath);
+
+                Log::info('downloadLargeCSV Memory usage before job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
             }, $filename, ['Content-Type' => 'text/csv']);
         } else 
         {
+            Log::info('downloadLargeCSV Memory usage before job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
             return redirect()->back();
         }
-        /* CARA BARU */
-
-        // /* CARA LAMA */
-        // // Cek jika file ada di penyimpanan dan memiliki ekstensi csv
-        // if (Storage::disk('public')->exists($filePath) && pathinfo($filename, PATHINFO_EXTENSION) == 'csv') 
-        // {
-        //     // Mengunduh file
-        //     $fileContent = Storage::disk('public')->get($filePath);
-        //     // Menghapus file setelah diunduh
-        //     Storage::disk('public')->delete($filePath);
-            
-        //     return response($fileContent, 200)->header('Content-Type', 'text/csv')
-        //                                       ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
-        // } else 
-        // {
-        //     return response()->json([], 400);
-        // }
-        // /* CARA LAMA */
     }
 }
