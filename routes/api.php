@@ -42,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/students/export/excel', [ExcelController::class, 'export']);
     Route::post('/students/import/excel', [ExcelController::class, 'import']);
     Route::get('/large/export/csv', [ExcelController::class, 'largeExport']);
+    Route::get('/notification/export/csv', [ExcelController::class, 'getNotificationExport']);
     
     Route::post('/sendemail', [EmailController::class, 'sendEmail']);
 });

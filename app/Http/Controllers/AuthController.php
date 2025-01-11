@@ -21,7 +21,10 @@ class AuthController extends Controller
                                     ->get();
 
         $notificationFormat = [];
-        
+
+        $notificationDownloadTotal = Notification::where('user_id', $user_id)
+                                                 ->where('name', 'download')
+                                                 ->count();
         
         foreach ($notifications as $notification) 
         {
@@ -48,10 +51,11 @@ class AuthController extends Controller
 
         $isExporting['largeCSV'] = Notification::where('user_id', $user_id)
                                                ->where('name', 'download')
+                                               ->where('active', 'F')
                                                ->exists(); 
         /* CHECK IS EXPORTING */
 
-        return response()->json(['status' => 200, 'message' => 'token valid', 'notifications' => $notificationFormat, 'isExporting' => $isExporting], 200);
+        return response()->json(['status' => 200, 'message' => 'token valid', 'notifications' => $notificationFormat, 'notificationDownloadTotal' => $notificationDownloadTotal, 'isExporting' => $isExporting], 200);
     }
     
     public function register(Request $request)

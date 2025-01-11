@@ -39,6 +39,7 @@ class ChunkCSVJob implements ShouldQueue
     {
         ini_set('memory_limit', '512M');
 
+        $startTime = microtime(true);
         Log::info('ChunkCSVJob Memory usage before job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
 
         $dataCount = FailedLeadRecord::count();
@@ -112,7 +113,10 @@ class ChunkCSVJob implements ShouldQueue
                         });
         /* JOB */
 
-        Log::info('ChunkCSVJob Memory usage after job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
+        $endTime = microtime(true);
+        $duration = $endTime - $startTime;
+
+        Log::info('ChunkCSVJob Memory usage after job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB , duration = ' . $duration . ' Second');
     }
 
     public function failed(Exception $e)

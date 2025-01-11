@@ -39,8 +39,10 @@ class ExcelController extends Controller
     
     public function largeExport(Request $request)
     {
+        $user_id = auth()->user()->id;
+
         $notification = Notification::create([
-            'user_id' => 1,
+            'user_id' => $user_id,
             'status' => 'success',
             'name' => 'download',
             'message' => 'export csv failed lead record successfully',
@@ -54,8 +56,6 @@ class ExcelController extends Controller
 
     public function downloadLargeCSV($filename)
     {
-        ini_set('memory_limit', '512M');
-
         Log::info('downloadLargeCSV Memory usage before job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
 
         $filePath = "csv/$filename";
@@ -84,4 +84,51 @@ class ExcelController extends Controller
             return redirect()->back();
         }
     }
+
+    public function getNotificationExport()
+    {
+        /* GET NOTIFICATION WHERE USER ID AND ACTIVE = 'T' */
+        $user_id = auth()->user()->id;
+        $notifications = Notification::where('user_id', $user_id)
+                                    ->where('active', 'T')
+                                    ->get();
+    
+        $notificationFormat = [];
+        
+        $notificationDownloadTotal = Notification::where('user_id', $user_id)
+                                                 ->where('name', 'download')
+                                                 ->count();
+        
+        foreach ($notifications as $notification)
+        {
+            $data = [];
+            if(!empty($notification->data) && trim($notification->data) != '')
+                $data = json_decode($notification->data, true); 
+        
+            $notificationFormat[] = [
+                'id' => $notification->id, 
+                'status' => $notification->status,
+                'message' => $notification->message,
+                'name' => $notification->name,
+                'data' => $data
+            ];
+    
+            $notification->delete();
+        }
+        /* GET NOTIFICATION WHERE USER ID AND ACTIVE = 'T' */
+    
+        /* CHECK IS EXPORTING */
+        $isExporting = [
+            'largeCSV' => false
+        ];
+    
+        $isExporting['largeCSV'] = Notification::where('user_id', $user_id)
+                                               ->where('name', 'download')
+                                               ->where('active', 'F')
+                                               ->exists(); 
+        /* CHECK IS EXPORTING */
+
+        return response()->json(['status' => 200, 'notifications' => $notificationFormat, 'notificationDownloadTotal' => $notificationDownloadTotal, 'isExporting' => $isExporting], 200);
+    }
+
 }
