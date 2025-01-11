@@ -76,11 +76,11 @@ class ExcelController extends Controller
                 // Hapus file setelah streaming selesai
                 Storage::disk('public')->delete($filePath);
 
-                Log::info('downloadLargeCSV Memory usage before job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
+                Log::info('downloadLargeCSV Memory usage after job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
             }, $filename, ['Content-Type' => 'text/csv']);
         } else 
         {
-            Log::info('downloadLargeCSV Memory usage before job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
+            Log::info('downloadLargeCSV Memory usage after job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
             return redirect()->back();
         }
     }
