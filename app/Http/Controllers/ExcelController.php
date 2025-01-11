@@ -58,17 +58,44 @@ class ExcelController extends Controller
 
         $filePath = "csv/$filename";
 
+        /* CARA BARU */
         // Cek jika file ada di penyimpanan dan memiliki ekstensi csv
-        if (Storage::disk('public')->exists($filePath) && pathinfo($filename, PATHINFO_EXTENSION) == 'csv') {
-            // Mengunduh file
-            $fileContent = Storage::disk('public')->get($filePath);
-            // Menghapus file setelah diunduh
-            Storage::disk('public')->delete($filePath);
-            
-            return response($fileContent, 200)->header('Content-Type', 'text/csv')
-                                              ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
-        } else {
-            return response()->json([], 400);
+        if (Storage::disk('public')->exists($filePath) && pathinfo($filename, PATHINFO_EXTENSION) == 'csv') 
+        {
+            return response()->streamDownload(function () use ($filePath) {
+                $stream = Storage::disk('public')->readStream($filePath);
+
+                while (!feof($stream)) 
+                {
+                    echo fread($stream, 1024 * 8); // Mengirim data dalam potongan kecil
+                    flush();
+                }
+                fclose($stream);
+
+                // Hapus file setelah streaming selesai
+                Storage::disk('public')->delete($filePath);
+            }, $filename, ['Content-Type' => 'text/csv']);
+        } else 
+        {
+            return redirect()->back();
         }
+        /* CARA BARU */
+
+        // /* CARA LAMA */
+        // // Cek jika file ada di penyimpanan dan memiliki ekstensi csv
+        // if (Storage::disk('public')->exists($filePath) && pathinfo($filename, PATHINFO_EXTENSION) == 'csv') 
+        // {
+        //     // Mengunduh file
+        //     $fileContent = Storage::disk('public')->get($filePath);
+        //     // Menghapus file setelah diunduh
+        //     Storage::disk('public')->delete($filePath);
+            
+        //     return response($fileContent, 200)->header('Content-Type', 'text/csv')
+        //                                       ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+        // } else 
+        // {
+        //     return response()->json([], 400);
+        // }
+        // /* CARA LAMA */
     }
 }

@@ -25,7 +25,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-Route::get('/download/csv/{filename}', [ExcelController::class, 'downloadLargeCSV']);
+// Route::get('/download/csv/{filename}', [ExcelController::class, 'downloadLargeCSV']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/tokenvalidation', [AuthController::class, 'tokenValidation']);

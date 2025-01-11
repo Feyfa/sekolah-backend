@@ -29,9 +29,6 @@ class AuthController extends Controller
             if(!empty($notification->data) && trim($notification->data) != '')
                 $data = json_decode($notification->data, true); 
         
-            if ($notification->name == 'download' && is_array($data) && count($data) > 0) 
-                $data['link'] = preg_replace('#(https://[^/]+)//#', '$1/', $data['link']);
-        
             $notificationFormat[] = [
                 'id' => $notification->id, 
                 'status' => $notification->status,
