@@ -3,8 +3,8 @@
 namespace App\Jobs;
 
 use App\Models\DataLarge;
+use App\Models\DownloadProgress;
 use App\Models\FailedLeadRecord;
-use App\Models\Notification;
 use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,14 +22,14 @@ class ChunkCSVJob implements ShouldQueue
     public $tries = 1;
     public $timeout = 600;
 
-    private $notificationid;
+    private $downloadProgressID;
 
     /**
      * Create a new job instance.
      */
-    public function __construct($notificationid)
+    public function __construct($downloadProgressID)
     {
-        $this->notificationid = $notificationid;
+        $this->downloadProgressID = $downloadProgressID;
     }
 
     /**
@@ -98,25 +98,27 @@ class ChunkCSVJob implements ShouldQueue
             'link' => $link
         ];
 
-        $notificationid = $this->notificationid;
-        Notification::where('id', $notificationid)
-                    ->update([
-                        'data' => json_encode($data, JSON_UNESCAPED_SLASHES),
-                    ]);
+        $downloadProgressID = $this->downloadProgressID;
+        DownloadProgress::where('id', $downloadProgressID)
+                        ->update([
+                            'link' => $link,
+                            'status' => 'progress'
+                        ]);
         /* INSERT NOTIFICATION */
 
         /* JOB */
         FailedLeadRecord::select('function','type','blocked_type','description','leadspeek_api_id','email_encrypt','url','leadspeek_type','data_lead','updated_at','created_at')
-                        ->chunk($sizeChunk, function ($rows) use ($filename, $dataCount, $notificationid) {
+                        ->chunk($sizeChunk, function ($rows) use ($filename, $dataCount, $downloadProgressID) {
                             $data = $rows->toArray();
-                            InsertCSVJob::dispatch($data, $filename, $dataCount, $notificationid)->onQueue('insert_export_csv');
+                            InsertCSVJob::dispatch($data, $filename, $dataCount, $downloadProgressID)->onQueue('insert_download_csv');
                         });
         /* JOB */
 
         $endTime = microtime(true);
         $duration = $endTime - $startTime;
 
-        Log::info('ChunkCSVJob Memory usage after job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB , duration = ' . $duration . ' Second');
+        Log::info('ChunkCSVJob duration = ' . $duration . ' Second');
+        Log::info('ChunkCSVJob Memory usage after job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
     }
 
     public function failed(Exception $e)
@@ -125,10 +127,11 @@ class ChunkCSVJob implements ShouldQueue
             'action' => 'failed ChunkCSVJob',
             'error' => $e->getMessage()
         ]);
-        Notification::where('id', $this->notificationid)
-                    ->update([
-                        'active' => 'T'
-                    ]);
+    
+        DownloadProgress::where('id', $this->downloadProgressID)
+                        ->update([
+                            'status' => 'done'
+                        ]);
     }
 
     private function formatCsvLine(array $data): string

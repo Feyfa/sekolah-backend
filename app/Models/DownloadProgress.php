@@ -5,18 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Notification extends Model
+class DownloadProgress extends Model
 {
     use HasFactory;
 
-    protected $table = 'notifications';
+    protected $table = 'download_progress';
 
     protected $fillable = [
         'user_id',
-        'status',
         'name',
-        'message',
-        'data',
-        'active'
+        'link',
+        'status',
     ];
 }

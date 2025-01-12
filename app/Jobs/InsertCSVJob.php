@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Models\Notification;
+use App\Models\DownloadProgress;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Bus\Queueable;
@@ -22,17 +22,17 @@ class InsertCSVJob implements ShouldQueue
     private array $data;
     private $filename;
     private $datacount;
-    private $notificationid;
+    private $downloadProgressID;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(array $data, $filename, $datacount, $notificationid)
+    public function __construct(array $data, $filename, $datacount, $downloadProgressID)
     {
         $this->data = $data;
         $this->filename = $filename;
         $this->datacount = $datacount;
-        $this->notificationid = $notificationid;
+        $this->downloadProgressID = $downloadProgressID;
     }
 
     /**
@@ -82,10 +82,10 @@ class InsertCSVJob implements ShouldQueue
    
         if($totalline >= $this->datacount)
         {
-            Notification::where('id', $this->notificationid)
-                        ->update([
-                            'active' => 'T'
-                        ]);
+            DownloadProgress::where('id', $this->downloadProgressID)
+                            ->update([
+                                'status' => 'done'
+                            ]);
         }
 
         // Log::info('InsertCSVJob Memory usage after job: ' . round(memory_get_usage() / 1024 / 1024, 2) . ' MB');
@@ -97,10 +97,12 @@ class InsertCSVJob implements ShouldQueue
             'action' => 'failed InsertCSVJob',
             'error' => $e->getMessage()
         ]);
-        Notification::where('id', $this->notificationid)
-                    ->update([
-                        'active' => 'T'
-                    ]);
+
+        DownloadProgress::where('id', $this->downloadProgressID)
+                        ->update([
+                            'status' => 'done'
+                        ]);
+
     }
 
     private function formatCsvLine(array $data): string

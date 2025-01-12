@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Notification;
+use App\Models\DownloadProgress;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,50 +12,33 @@ use Yaza\LaravelGoogleDriveStorage\Gdrive;
 
 class AuthController extends Controller
 {
-    public function tokenValidation()
+    public function tokenValidation(Request $request)
     {
-        /* GET NOTIFICATION WHERE USER ID AND ACTIVE = 'T' */
-        $user_id = auth()->user()->id;
-        $notifications = Notification::where('user_id', $user_id)
-                                    ->where('active', 'T')
-                                    ->get();
+        $user_id = $request->user_id;
+        $downloadProgress = DownloadProgress::where('user_id', $user_id)
+                                            ->get();
 
-        $notificationFormat = [];
-
-        $notificationDownloadTotal = Notification::where('user_id', $user_id)
-                                                 ->where('name', 'download')
-                                                 ->count();
-        
-        foreach ($notifications as $notification) 
-        {
-            $data = [];
-            if(!empty($notification->data) && trim($notification->data) != '')
-                $data = json_decode($notification->data, true); 
-        
-            $notificationFormat[] = [
-                'id' => $notification->id, 
-                'status' => $notification->status,
-                'message' => $notification->message,
-                'name' => $notification->name,
-                'data' => $data
-            ];
-
-            $notification->delete();
-        }
-        /* GET NOTIFICATION WHERE USER ID AND ACTIVE = 'T' */
-
-        /* CHECK IS EXPORTING */
-        $isExporting = [
-            'largeCSV' => false
+        $isDownloadProgress = [
+            'download_failed_lead' => false
         ];
+        $downloadProgressTotal = count($downloadProgress);
+        $downloadProgressDone = [];
+        
+        foreach($downloadProgress as $downloadProgres)
+        {
+            if($downloadProgres->name == 'download_failed_lead' && in_array($downloadProgres->status, ['queue', 'progress']))
+            {
+                $isDownloadProgress['download_failed_lead'] = true;
+            }
+            
+            if($downloadProgres->status == 'done')
+            {
+                $downloadProgressDone[] = $downloadProgres;
+                $downloadProgres->delete();
+            }
+        }
 
-        $isExporting['largeCSV'] = Notification::where('user_id', $user_id)
-                                               ->where('name', 'download')
-                                               ->where('active', 'F')
-                                               ->exists(); 
-        /* CHECK IS EXPORTING */
-
-        return response()->json(['status' => 200, 'message' => 'token valid', 'notifications' => $notificationFormat, 'notificationDownloadTotal' => $notificationDownloadTotal, 'isExporting' => $isExporting], 200);
+        return response()->json(['status' => 200, 'message' => 'token valid', 'downloadProgressTotal' => $downloadProgressTotal, 'downloadProgressDone' => $downloadProgressDone, 'isDownloadProgress' => $isDownloadProgress], 200);
     }
     
     public function register(Request $request)

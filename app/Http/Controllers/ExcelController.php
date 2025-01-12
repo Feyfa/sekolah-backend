@@ -8,7 +8,7 @@ use App\Jobs\ChunkCSVJob;
 use App\Jobs\EndInsertCSVJob;
 use App\Jobs\InsertCSVJob;
 use App\Models\DataLarge;
-use App\Models\Notification;
+use App\Models\DownloadProgress;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Log;
@@ -39,18 +39,17 @@ class ExcelController extends Controller
     
     public function largeExport(Request $request)
     {
-        $user_id = auth()->user()->id;
+        $user_id = $request->user_id;
 
-        $notification = Notification::create([
+        $downloadProgress = DownloadProgress::create([
             'user_id' => $user_id,
-            'status' => 'success',
-            'name' => 'download',
-            'message' => 'export csv failed lead record successfully',
-            'data' => '',
-            'active' => 'F'
+            'name' => 'download_failed_lead',
+            'link' => '',
+            'status' => 'queue'
         ]);
-        $notificationid = $notification->id;
-        ChunkCSVJob::dispatch($notificationid)->onQueue('chunk_export_csv');
+        $downloadProgressID = $downloadProgress->id;
+        ChunkCSVJob::dispatch($downloadProgressID)->onQueue('chunk_download_csv');
+
         return response()->json(['result' => 'success', 'message' => "export is running in background processing, when it is finished you will get a notification"]);
     }
 
@@ -85,50 +84,33 @@ class ExcelController extends Controller
         }
     }
 
-    public function getNotificationExport()
+    public function getNotificationExport(Request $request)
     {
-        /* GET NOTIFICATION WHERE USER ID AND ACTIVE = 'T' */
-        $user_id = auth()->user()->id;
-        $notifications = Notification::where('user_id', $user_id)
-                                    ->where('active', 'T')
-                                    ->get();
-    
-        $notificationFormat = [];
-        
-        $notificationDownloadTotal = Notification::where('user_id', $user_id)
-                                                 ->where('name', 'download')
-                                                 ->count();
-        
-        foreach ($notifications as $notification)
-        {
-            $data = [];
-            if(!empty($notification->data) && trim($notification->data) != '')
-                $data = json_decode($notification->data, true); 
-        
-            $notificationFormat[] = [
-                'id' => $notification->id, 
-                'status' => $notification->status,
-                'message' => $notification->message,
-                'name' => $notification->name,
-                'data' => $data
-            ];
-    
-            $notification->delete();
-        }
-        /* GET NOTIFICATION WHERE USER ID AND ACTIVE = 'T' */
-    
-        /* CHECK IS EXPORTING */
-        $isExporting = [
-            'largeCSV' => false
-        ];
-    
-        $isExporting['largeCSV'] = Notification::where('user_id', $user_id)
-                                               ->where('name', 'download')
-                                               ->where('active', 'F')
-                                               ->exists(); 
-        /* CHECK IS EXPORTING */
+        $user_id = $request->user_id;
+        $downloadProgress = DownloadProgress::where('user_id', $user_id)
+                                            ->get();
 
-        return response()->json(['status' => 200, 'notifications' => $notificationFormat, 'notificationDownloadTotal' => $notificationDownloadTotal, 'isExporting' => $isExporting], 200);
+        $isDownloadProgress = [
+            'download_failed_lead' => false
+        ];
+        $downloadProgressTotal = count($downloadProgress);
+        $downloadProgressDone = [];
+        
+        foreach($downloadProgress as $downloadProgres)
+        {
+            if($downloadProgres->name == 'download_failed_lead' && in_array($downloadProgres->status, ['queue', 'progress']))
+            {
+                $isDownloadProgress['download_failed_lead'] = true;
+            }
+            
+            if($downloadProgres->status == 'done')
+            {
+                $downloadProgressDone[] = $downloadProgres;
+                $downloadProgres->delete();
+            }
+        }
+
+        return response()->json(['status' => 200, 'message' => 'token valid', 'downloadProgressTotal' => $downloadProgressTotal, 'downloadProgressDone' => $downloadProgressDone, 'isDownloadProgress' => $isDownloadProgress], 200);
     }
 
 }
