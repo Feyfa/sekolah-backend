@@ -14,6 +14,10 @@ class AuthController extends Controller
 {
     public function tokenValidation(Request $request)
     {
+        /* GET IP */
+        Log::info("ip = " . $request->ip());
+        /* GET IP */
+
         $user_id = $request->user_id;
         $downloadProgress = DownloadProgress::where('user_id', $user_id)
                                             ->get();
